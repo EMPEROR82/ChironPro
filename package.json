@@ -2,7 +2,7 @@
   "name": "chiron-extension",
   "displayName": "ChironPro",
   "description": "course-project",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "icon": "./icons/wmremove-transformed.png",
   "engines": {
     "vscode": "^1.110.0"
@@ -21,13 +21,13 @@
   },
   "contributes": {
     "commands": [
-    {
-      "command": "chiron.runFile",
-      "title": "Run Chiron File",
-      "icon": "$(play-circle)",
-      "category": "Chiron"
-    }
-  ],
+      {
+        "command": "chiron.runFile",
+        "title": "Run Chiron File",
+        "icon": "$(play-circle)",
+        "category": "Chiron"
+      }
+    ],
     "menus": {
       "editor/title": [
         {
