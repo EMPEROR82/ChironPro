@@ -2,7 +2,7 @@
   "name": "chiron-extension",
   "displayName": "Chiron-Extension",
   "description": "course-project",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.110.0"
   },
