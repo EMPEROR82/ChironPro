@@ -1,0 +1,140 @@
+{
+  "name": "chiron-extension",
+  "displayName": "Chiron-Extension",
+  "description": "course-project",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/client/client.js",
+
+  "activationEvents": [
+    "onLanguage:chiron"
+  ],
+
+  "files": [
+    "assets/**",
+    "docs/**",
+    "doxygen/**",
+    "node_modules/**",
+    "main.py",
+    "out/**",
+    "client/**",
+    "server/**",
+    "syntaxes/**",
+    "icons/**",
+    "snippets.json",
+    "language-configuration.json",
+    "webview.html",
+    "ChironCore/**",
+    "package.json",
+    "pyproject.toml",
+    "tsconfig.json"
+  ],
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EMPEROR82/ChironIITK-CS335"
+  },
+
+  "contributes": {
+    "commands": [
+      {
+        "command": "chiron.runFile",
+        "title": "Run Chiron File",
+        "icon": "$(play)",
+        "category": "Chiron"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "chiron.runFile",
+          "when": "resourceExtname == '.tl'",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "chiron.runFile",
+          "when": "resourceExtname == '.tl'",
+          "group": "chiron@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "chiron.runFile",
+          "when": "resourceExtname == '.tl'"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "chiron.runFile",
+        "key": "f5",
+        "when": "editorLangId == chiron"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Chiron",
+      "properties": {
+        "chiron.coreDir": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to ChironCore. If empty, extension will use bundled ChironCore."
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "chiron",
+        "aliases": ["Chiron", "chiron"],
+        "extensions": [".tl"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "chiron",
+        "scopeName": "source.chiron",
+        "path": "./syntaxes/chiron.tmLanguage.json"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "chiron-icons",
+        "label": "Chiron Icons",
+        "path": "./icons/chiron-icon-theme.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "chiron",
+        "path": "./snippets.json"
+      }
+    ]
+  },
+
+  "dependencies": {
+    "antlr4ts": "^0.5.0-alpha.4",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
+  },
+
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "@types/vscode": "^1.110.0",
+    "antlr4ts-cli": "^0.5.0-alpha.4",
+    "typescript": "^5.9.3"
+  },
+
+  "scripts": {
+    "antlr": "antlr4ts-cli -visitor -o server/antlr server/grammar/tlang.g4",
+    "compile": "tsc -p ."
+  }
+}

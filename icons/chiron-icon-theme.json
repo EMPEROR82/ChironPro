@@ -1,0 +1,10 @@
+{
+  "iconDefinitions": {
+    "_tl_file": {
+      "iconPath": "./wmremove-transformed.png"
+    }
+  },
+  "fileExtensions": {
+    "tl": "_tl_file"
+  }
+}

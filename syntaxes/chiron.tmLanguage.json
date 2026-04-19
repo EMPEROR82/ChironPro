@@ -1,0 +1,114 @@
+{
+  "scopeName": "source.chiron",
+  "name": "Chiron",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#commands" },
+    { "include": "#functions" },
+    { "include": "#variables" },
+    { "include": "#numbers" },
+    { "include": "#strings" },
+    { "include": "#operators" },
+    { "include": "#brackets" }
+  ],
+  "repository": {
+
+    "comments": {
+      "patterns": [
+        {
+          "match": "//.*$",
+          "name": "comment.line.chiron"
+        }
+      ]
+    },
+
+    "keywords": {
+      "patterns": [
+        {
+          "match": "\\b(if|else|repeat|function|return|array)\\b",
+          "name": "keyword.control.chiron"
+        }
+      ]
+    },
+
+    "commands": {
+      "patterns": [
+        {
+          "match": "\\b(forward|backward|left|right|penup|pendown|pause|printf|goto)\\b",
+          "name": "support.function.chiron"
+        }
+      ]
+    },
+
+    "functions": {
+      "patterns": [
+        {
+          "match": "\\b(function)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.control.chiron" },
+            "2": { "name": "entity.name.function.chiron" }
+          }
+        },
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+          "name": "entity.name.function.call.chiron"
+        }
+      ]
+    },
+
+    "variables": {
+      "patterns": [
+        {
+          "match": ":[a-zA-Z_][a-zA-Z0-9_]*",
+          "name": "variable.other.chiron"
+        }
+      ]
+    },
+
+    "numbers": {
+      "patterns": [
+        {
+          "match": "\\b\\d+\\b",
+          "name": "constant.numeric.chiron"
+        }
+      ]
+    },
+
+    "strings": {
+      "patterns": [
+        {
+          "match": "\"([^\"\\\\]|\\\\.)*\"",
+          "name": "string.quoted.double.chiron"
+        }
+      ]
+    },
+
+    "operators": {
+      "patterns": [
+        {
+          "match": "\\*\\*|==|!=|<=|>=|&&|\\|\\||[+\\-*/%<>=!]",
+          "name": "keyword.operator.chiron"
+        }
+      ]
+    },
+
+    "brackets": {
+      "patterns": [
+        {
+          "match": "[\\[\\]]",
+          "name": "punctuation.section.block.chiron"
+        },
+        {
+          "match": "[\\(\\)]",
+          "name": "punctuation.section.parens.chiron"
+        },
+        {
+          "match": "[\\{\\}]",
+          "name": "punctuation.section.braces.chiron"
+        }
+      ]
+    }
+
+  }
+}
