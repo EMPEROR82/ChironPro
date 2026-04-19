@@ -79,8 +79,8 @@
         ],
         "configuration": "./language-configuration.json",
         "icon": {
-          "light": "./icons/icons/wmremove-transformed.png",
-          "dark": "./icons/icons/wmremove-transformed.png"
+          "light": "./icons/wmremove-transformed.png",
+          "dark": "./icons/wmremove-transformed.png"
         }
       }
     ],
