@@ -1,8 +1,9 @@
 {
   "name": "chiron-extension",
-  "displayName": "Chiron-Extension",
+  "displayName": "ChironPro",
   "description": "course-project",
   "version": "0.0.6",
+  "icon": "./icons/wmremove-transformed.png",
   "engines": {
     "vscode": "^1.110.0"
   },
