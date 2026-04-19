@@ -77,7 +77,11 @@
         "extensions": [
           ".tl"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/icons/wmremove-transformed.png",
+          "dark": "./icons/icons/wmremove-transformed.png"
+        }
       }
     ],
     "grammars": [
@@ -85,13 +89,6 @@
         "language": "chiron",
         "scopeName": "source.chiron",
         "path": "./syntaxes/chiron.tmLanguage.json"
-      }
-    ],
-    "iconThemes": [
-      {
-        "id": "chiron-icons",
-        "label": "Chiron Icons",
-        "path": "./icons/icons/wmremove-transformed.png"
       }
     ],
     "snippets": [
