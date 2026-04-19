@@ -4,6 +4,31 @@ Official Visual Studio Code extension for **ChironLang**, providing a robust dev
 
 ---
 
+## 📦 Prerequisites: Installing uv
+
+The ChironLang extension requires the `uv` package manager to execute the interpreter. Follow the instructions below for your operating system:
+
+### **macOS & Linux**
+Open your terminal and run:
+
+`curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+For macOS, you can also use:
+
+`brew install uv`
+
+
+### **Windows**
+
+`powershell -c "ir https://astral.sh/uv/install.ps1 | iex"`
+
+### Verification
+
+Once the script completes, restart your terminal or run source `$HOME/.cargo/env` (if applicable) and verify the installation by checking the version:
+
+`uv --version`
+
+---
 ## 🚀 Features
 
 ### **Intelligent Code Editing**
