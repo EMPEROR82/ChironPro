@@ -2,7 +2,7 @@
   "name": "chiron-extension",
   "displayName": "Chiron-Extension",
   "description": "course-project",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.110.0"
   },
@@ -10,17 +10,14 @@
     "Programming Languages"
   ],
   "main": "./out/client/client.js",
-
   "activationEvents": [
     "onLanguage:chiron",
     "onCommand:chiron.runFile"
   ],
-
   "repository": {
     "type": "git",
     "url": "https://github.com/EMPEROR82/ChironPro"
   },
-
   "contributes": {
     "commands": [
       {
@@ -73,8 +70,13 @@
     "languages": [
       {
         "id": "chiron",
-        "aliases": ["Chiron", "chiron"],
-        "extensions": [".tl"],
+        "aliases": [
+          "Chiron",
+          "chiron"
+        ],
+        "extensions": [
+          ".tl"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -99,21 +101,18 @@
       }
     ]
   },
-
   "dependencies": {
     "antlr4ts": "^0.5.0-alpha.4",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.12"
   },
-
   "devDependencies": {
     "@types/node": "^25.5.2",
     "@types/vscode": "^1.110.0",
     "antlr4ts-cli": "^0.5.0-alpha.4",
     "typescript": "^5.9.3"
   },
-
   "scripts": {
     "antlr": "antlr4ts-cli -visitor -o server/antlr server/grammar/tlang.g4",
     "compile": "tsc -p ."
