@@ -91,7 +91,7 @@
       {
         "id": "chiron-icons",
         "label": "Chiron Icons",
-        "path": "./icons/chiron-icon-theme.json"
+        "path": "./icons/icons/wmremove-transformed.png"
       }
     ],
     "snippets": [
