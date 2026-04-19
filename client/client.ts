@@ -1,14 +1,24 @@
-// (same imports)
 import * as path from 'path';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
+import { LanguageClient, TransportKind, ServerOptions, LanguageClientOptions } from 'vscode-languageclient/node';
 import { spawn } from 'child_process';
 
 let client: LanguageClient;
+let chironTerminal: vscode.Terminal | undefined;
 const output = vscode.window.createOutputChannel('Chiron');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+function getTerminal(): vscode.Terminal {
+  const alive = vscode.window.terminals.find(t => t.name === 'Chiron Runner');
+  if (alive) {
+    chironTerminal = alive;
+  } else {
+    chironTerminal = vscode.window.createTerminal('Chiron Runner');
+  }
+  return chironTerminal;
+}
 
 function getChironRoot(context: vscode.ExtensionContext): string {
   const config = vscode.workspace.getConfiguration('chiron');
@@ -18,7 +28,8 @@ function getChironRoot(context: vscode.ExtensionContext): string {
     return configured;
   }
 
-  return path.resolve(context.extensionPath, '..', 'ChironCore');
+  // Updated to look inside the ChironRuntime folder
+  return path.join(context.extensionPath, 'ChironRuntime', 'ChironCore');
 }
 
 function checkUvInstalled(): Promise<boolean> {
@@ -29,7 +40,40 @@ function checkUvInstalled(): Promise<boolean> {
   });
 }
 
-// ── Webview Runner ─────────────────────────────────────────────────────────
+// ── Normal (terminal) runner ───────────────────────────────────────────────
+
+function runChironFile(context: vscode.ExtensionContext, filePath: string, params?: string): void {
+  const terminal = getTerminal();
+  terminal.show(true);
+
+  const chironRoot = getChironRoot(context);
+  let cmd = `cd "${chironRoot}" && uv run chiron.py -r "${filePath}"`;
+  if (params && params.trim() !== '') {
+    cmd += ` -d '${params.trim()}'`;
+  }
+
+  terminal.sendText(cmd);
+}
+
+async function runWithVariables(context: vscode.ExtensionContext, filePath: string): Promise<void> {
+  const input = await vscode.window.showInputBox({
+    title: 'Chiron: Run with Variables',
+    prompt: 'Enter variable values as a Python dict (e.g. {":x": 10, ":y": 20})',
+    placeHolder: '{":x": 10, ":y": 20, ":z": 5}',
+    validateInput: (value) => {
+      const trimmed = value.trim();
+      if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+        return 'Must be a valid Python dict like {":x": 10}';
+      }
+      return null;
+    }
+  });
+
+  if (input === undefined) return;
+  runChironFile(context, filePath, input);
+}
+
+// ── Headless (webview) runner ──────────────────────────────────────────────
 
 type WebviewMessage =
   | { cmd: 'init'; data: { bg: string; pen_color: string; turtle_color: string } }
@@ -76,7 +120,6 @@ function runChironHeadless(
 ): void {
   const chironRoot = getChironRoot(context);
 
-  // ✅ Check ChironCore exists
   if (!fs.existsSync(chironRoot)) {
     vscode.window.showErrorMessage('ChironCore not found. Check chiron.coreDir setting.');
     return;
@@ -192,9 +235,30 @@ function runChironHeadless(
   }, 200);
 }
 
-// ── Command ────────────────────────────────────────────────────────────────
+async function runHeadlessWithVariables(
+  context: vscode.ExtensionContext,
+  filePath: string
+): Promise<void> {
+  const input = await vscode.window.showInputBox({
+    title: 'Chiron: Run with Variables (Webview)',
+    prompt: 'Enter variable values as a Python dict (e.g. {":x": 10, ":y": 20})',
+    placeHolder: '{":x": 10, ":y": 20, ":z": 5}',
+    validateInput: (value) => {
+      const trimmed = value.trim();
+      if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+        return 'Must be a valid Python dict like {":x": 10}';
+      }
+      return null;
+    }
+  });
 
-async function handleRunFile(context: vscode.ExtensionContext) {
+  if (input === undefined) return;
+  runChironHeadless(context, filePath, input);
+}
+
+// ── Command handler ────────────────────────────────────────────────────────
+
+async function handleRunFile(context: vscode.ExtensionContext): Promise<void> {
   const editor = vscode.window.activeTextEditor;
 
   if (!editor || editor.document.languageId !== 'chiron') {
@@ -211,7 +275,55 @@ async function handleRunFile(context: vscode.ExtensionContext) {
     return;
   }
 
-  runChironHeadless(context, filePath);
+  const choice = await vscode.window.showQuickPick(
+    [
+      {
+        label: '$(play) Run without variables',
+        description: 'Run in a terminal window (standard turtle UI)',
+        detail: `uv run chiron.py -r "${path.basename(filePath)}"`,
+        value: 'no-vars'
+      },
+      {
+        label: '$(symbol-variable) Run with variables',
+        description: 'Provide input variables, run in terminal window',
+        detail: `uv run chiron.py -r "${path.basename(filePath)}" -d '{...}'`,
+        value: 'with-vars'
+      },
+      {
+        label: '$(browser) Run in Webview (no variables)',
+        description: 'Render turtle output in a VS Code panel beside the editor',
+        detail: `uv run chiron.py --headless -r "${path.basename(filePath)}"`,
+        value: 'headless-no-vars'
+      },
+      {
+        label: '$(symbol-variable) Run in Webview (with variables)',
+        description: 'Provide input variables, render output in VS Code panel',
+        detail: `uv run chiron.py --headless -r "${path.basename(filePath)}" -d '{...}'`,
+        value: 'headless-with-vars'
+      }
+    ],
+    {
+      title: 'Chiron: How do you want to run this file?',
+      placeHolder: 'Select a run mode...'
+    }
+  );
+
+  if (!choice) return;
+
+  switch (choice.value) {
+    case 'no-vars':
+      runChironFile(context, filePath);
+      break;
+    case 'with-vars':
+      await runWithVariables(context, filePath);
+      break;
+    case 'headless-no-vars':
+      runChironHeadless(context, filePath);
+      break;
+    case 'headless-with-vars':
+      await runHeadlessWithVariables(context, filePath);
+      break;
+  }
 }
 
 // ── Extension lifecycle ────────────────────────────────────────────────────
@@ -221,14 +333,24 @@ export function activate(context: vscode.ExtensionContext) {
     path.join('out/server/server.js')
   );
 
-  const clientOptions = {
+  // Define how the server is executed in both normal and debug modes
+  const serverOptions: ServerOptions = {
+    run: { module: serverModule, transport: TransportKind.ipc },
+    debug: {
+      module: serverModule,
+      transport: TransportKind.ipc,
+      options: { execArgv: ['--nolazy', '--inspect=6009'] }
+    }
+  };
+
+  const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'chiron' }]
   };
 
   client = new LanguageClient(
     'chironLS',
     'Chiron Language Server',
-    { run: { module: serverModule, transport: TransportKind.ipc } },
+    serverOptions,
     clientOptions
   );
 
@@ -239,7 +361,13 @@ export function activate(context: vscode.ExtensionContext) {
     () => handleRunFile(context)
   );
 
-  context.subscriptions.push(runCommand);
+  const terminalCloseListener = vscode.window.onDidCloseTerminal(t => {
+    if (t.name === 'Chiron Runner') {
+      chironTerminal = undefined;
+    }
+  });
+
+  context.subscriptions.push(runCommand, terminalCloseListener);
 }
 
 export function deactivate() {

@@ -42,7 +42,7 @@ const node_1 = require("vscode-languageclient/node");
 const child_process_1 = require("child_process");
 let client;
 let chironTerminal;
-const output = vscode.window.createOutputChannel('Chiron Webview Runner');
+const output = vscode.window.createOutputChannel('Chiron');
 // ── Helpers ────────────────────────────────────────────────────────────────
 function getTerminal() {
     const alive = vscode.window.terminals.find(t => t.name === 'Chiron Runner');
@@ -54,29 +54,34 @@ function getTerminal() {
     }
     return chironTerminal;
 }
-function getChironRoot() {
+function getChironRoot(context) {
     const config = vscode.workspace.getConfiguration('chiron');
-    const configured = config.get('coreDir', '');
-    if (configured.trim() !== '') {
+    const configured = config.get('coreDir');
+    if (configured && configured.trim()) {
         return configured;
     }
-    const home = process.env.HOME ?? '';
-    return home
-        ? path.join(home, 'ChironIITK-CS335', 'ChironCore')
-        : path.join('ChironIITK-CS335', 'ChironCore');
+    // Updated to look inside the ChironRuntime folder
+    return path.join(context.extensionPath, 'ChironRuntime', 'ChironCore');
+}
+function checkUvInstalled() {
+    return new Promise((resolve) => {
+        const proc = (0, child_process_1.spawn)('uv', ['--version']);
+        proc.on('error', () => resolve(false));
+        proc.on('close', () => resolve(true));
+    });
 }
 // ── Normal (terminal) runner ───────────────────────────────────────────────
-function runChironFile(filePath, params) {
+function runChironFile(context, filePath, params) {
     const terminal = getTerminal();
     terminal.show(true);
-    const chironRoot = getChironRoot();
+    const chironRoot = getChironRoot(context);
     let cmd = `cd "${chironRoot}" && uv run chiron.py -r "${filePath}"`;
     if (params && params.trim() !== '') {
         cmd += ` -d '${params.trim()}'`;
     }
     terminal.sendText(cmd);
 }
-async function runWithVariables(filePath) {
+async function runWithVariables(context, filePath) {
     const input = await vscode.window.showInputBox({
         title: 'Chiron: Run with Variables',
         prompt: 'Enter variable values as a Python dict (e.g. {":x": 10, ":y": 20})',
@@ -91,39 +96,27 @@ async function runWithVariables(filePath) {
     });
     if (input === undefined)
         return;
-    runChironFile(filePath, input);
+    runChironFile(context, filePath, input);
 }
 function normalizeMessage(raw) {
     if (!raw || typeof raw !== 'object')
         return null;
-    // Already in the protocol the webview expects.
     if (raw.cmd && raw.data)
         return raw;
-    // Backward-compatible mappings.
     if (raw.type === 'forward') {
         return {
             cmd: 'line',
-            data: {
-                x1: raw.x1,
-                y1: raw.y1,
-                x2: raw.x2,
-                y2: raw.y2,
-                color: raw.color || 'blue'
-            }
+            data: { x1: raw.x1, y1: raw.y1, x2: raw.x2, y2: raw.y2, color: raw.color || 'blue' }
         };
     }
-    if (raw.type === 'rotate') {
+    if (raw.type === 'rotate')
         return { cmd: 'rotate', data: { angle: raw.angle } };
-    }
-    if (raw.type === 'pen') {
+    if (raw.type === 'pen')
         return { cmd: 'pen', data: { down: !!raw.down } };
-    }
-    if (raw.type === 'turtle_pos') {
+    if (raw.type === 'turtle_pos')
         return { cmd: 'turtle_pos', data: raw };
-    }
-    if (raw.type === 'print') {
+    if (raw.type === 'print')
         return { cmd: 'print', data: raw };
-    }
     if (raw.type === 'init') {
         return {
             cmd: 'init',
@@ -137,19 +130,21 @@ function normalizeMessage(raw) {
     return null;
 }
 function runChironHeadless(context, filePath, params) {
-    const chironRoot = getChironRoot();
+    const chironRoot = getChironRoot(context);
+    if (!fs.existsSync(chironRoot)) {
+        vscode.window.showErrorMessage('ChironCore not found. Check chiron.coreDir setting.');
+        return;
+    }
     const panel = vscode.window.createWebviewPanel('chironTurtle', 'Chiron: ' + path.basename(filePath), vscode.ViewColumn.Beside, { enableScripts: true });
     const htmlPath = path.join(context.extensionPath, 'webview.html');
     if (!fs.existsSync(htmlPath)) {
-        vscode.window.showErrorMessage(`Chiron: webview.html not found at ${htmlPath}`);
+        vscode.window.showErrorMessage(`webview.html not found at ${htmlPath}`);
         return;
     }
     panel.webview.html = fs.readFileSync(htmlPath, 'utf8');
-    // Give the webview a moment to load its script and register the message handler.
     const spawnArgs = ['chiron.py', '--headless', '-r', filePath];
-    if (params && params.trim() !== '') {
+    if (params?.trim())
         spawnArgs.push('-d', params.trim());
-    }
     let proc;
     let disposed = false;
     let buffer = '';
@@ -162,36 +157,28 @@ function runChironHeadless(context, filePath, params) {
         if (disposed)
             return;
         proc = (0, child_process_1.spawn)('uv', ['run', ...spawnArgs], { cwd: chironRoot });
-        if (!proc.stdout || !proc.stderr) {
-            output.appendLine('[spawn error] stdout/stderr stream missing');
-            vscode.window.showErrorMessage('Chiron failed to start: missing stdout/stderr stream');
-            return;
-        }
-        proc.stdout.on('data', (chunk) => {
+        proc.stdout?.on('data', (chunk) => {
             buffer += chunk.toString('utf8');
             while (true) {
                 const start = buffer.indexOf('{');
                 if (start === -1) {
-                    if (buffer.trim()) {
+                    if (buffer.trim())
                         output.append(buffer);
-                    }
                     buffer = '';
                     return;
                 }
                 if (start > 0) {
                     const prefix = buffer.slice(0, start);
-                    if (prefix.trim()) {
+                    if (prefix.trim())
                         output.append(prefix);
-                    }
                     buffer = buffer.slice(start);
                 }
                 let braceCount = 0;
                 let end = -1;
                 for (let i = 0; i < buffer.length; i++) {
-                    const ch = buffer[i];
-                    if (ch === '{')
+                    if (buffer[i] === '{')
                         braceCount++;
-                    else if (ch === '}')
+                    else if (buffer[i] === '}')
                         braceCount--;
                     if (braceCount === 0) {
                         end = i;
@@ -211,21 +198,17 @@ function runChironHeadless(context, filePath, params) {
                     }
                     if (msg.cmd === 'init') {
                         initSent = true;
-                        void panel.webview.postMessage(msg);
+                        panel.webview.postMessage(msg);
                     }
                     else {
                         if (!initSent) {
-                            void panel.webview.postMessage({
+                            panel.webview.postMessage({
                                 cmd: 'init',
-                                data: {
-                                    bg: 'white',
-                                    pen_color: 'blue',
-                                    turtle_color: 'green'
-                                }
+                                data: { bg: 'white', pen_color: 'blue', turtle_color: 'green' }
                             });
                             initSent = true;
                         }
-                        void panel.webview.postMessage(msg);
+                        panel.webview.postMessage(msg);
                     }
                 }
                 catch {
@@ -233,39 +216,16 @@ function runChironHeadless(context, filePath, params) {
                 }
             }
         });
-        proc.stderr.on('data', (data) => {
+        proc.stderr?.on('data', (data) => {
             output.appendLine(`[stderr] ${data.toString('utf8')}`);
         });
         proc.on('error', (err) => {
-            output.appendLine(`[spawn error] ${String(err)}`);
-            vscode.window.showErrorMessage(`Chiron failed to start: ${String(err)}`);
+            vscode.window.showErrorMessage(`Failed to start: ${String(err)}`);
         });
         proc.on('close', (code) => {
-            const leftover = buffer.trim();
-            if (leftover) {
-                if (leftover.startsWith('{') || leftover.startsWith('[')) {
-                    try {
-                        const raw = JSON.parse(leftover);
-                        const msg = normalizeMessage(raw);
-                        if (msg) {
-                            void panel.webview.postMessage(msg);
-                        }
-                        else {
-                            output.appendLine(`[Unknown JSON] ${leftover}`);
-                        }
-                    }
-                    catch {
-                        output.appendLine(`[Parse Error] ${leftover}`);
-                    }
-                }
-                else {
-                    output.append(leftover);
-                }
-            }
-            buffer = '';
             output.appendLine(`[process exit] code=${code}`);
         });
-    }, 300);
+    }, 200);
 }
 async function runHeadlessWithVariables(context, filePath) {
     const input = await vscode.window.showInputBox({
@@ -287,16 +247,17 @@ async function runHeadlessWithVariables(context, filePath) {
 // ── Command handler ────────────────────────────────────────────────────────
 async function handleRunFile(context) {
     const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-        vscode.window.showErrorMessage('Chiron: No active file to run.');
-        return;
-    }
-    if (editor.document.languageId !== 'chiron') {
-        vscode.window.showErrorMessage('Chiron: Active file is not a Chiron (.tl) file.');
+    if (!editor || editor.document.languageId !== 'chiron') {
+        vscode.window.showErrorMessage('Open a .tl file first.');
         return;
     }
     await editor.document.save();
     const filePath = editor.document.fileName;
+    const uvOk = await checkUvInstalled();
+    if (!uvOk) {
+        vscode.window.showErrorMessage('uv is not installed. Please install it first.');
+        return;
+    }
     const choice = await vscode.window.showQuickPick([
         {
             label: '$(play) Run without variables',
@@ -330,10 +291,10 @@ async function handleRunFile(context) {
         return;
     switch (choice.value) {
         case 'no-vars':
-            runChironFile(filePath);
+            runChironFile(context, filePath);
             break;
         case 'with-vars':
-            await runWithVariables(filePath);
+            await runWithVariables(context, filePath);
             break;
         case 'headless-no-vars':
             runChironHeadless(context, filePath);
@@ -346,9 +307,14 @@ async function handleRunFile(context) {
 // ── Extension lifecycle ────────────────────────────────────────────────────
 function activate(context) {
     const serverModule = context.asAbsolutePath(path.join('out/server/server.js'));
+    // Define how the server is executed in both normal and debug modes
     const serverOptions = {
         run: { module: serverModule, transport: node_1.TransportKind.ipc },
-        debug: { module: serverModule, transport: node_1.TransportKind.ipc }
+        debug: {
+            module: serverModule,
+            transport: node_1.TransportKind.ipc,
+            options: { execArgv: ['--nolazy', '--inspect=6009'] }
+        }
     };
     const clientOptions = {
         documentSelector: [{ scheme: 'file', language: 'chiron' }]

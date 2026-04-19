@@ -1,0 +1,12 @@
+.vscode/**
+.vscode-test/**
+src/**
+.gitignore
+vsc-extension-quickstart.md
+**/tsconfig.json
+**/*.map
+**/*.ts
+!out/**/*.js
+ChironRuntime/**/__pycache__/**
+ChironRuntime/**/.venv/**
+ChironRuntime/**/.git/**

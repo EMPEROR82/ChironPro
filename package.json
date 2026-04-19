@@ -12,32 +12,13 @@
   "main": "./out/client/client.js",
 
   "activationEvents": [
-    "onLanguage:chiron"
-  ],
-
-  "files": [
-    "assets/**",
-    "docs/**",
-    "doxygen/**",
-    "node_modules/**",
-    "main.py",
-    "out/**",
-    "client/**",
-    "server/**",
-    "syntaxes/**",
-    "icons/**",
-    "snippets.json",
-    "language-configuration.json",
-    "webview.html",
-    "ChironCore/**",
-    "package.json",
-    "pyproject.toml",
-    "tsconfig.json"
+    "onLanguage:chiron",
+    "onCommand:chiron.runFile"
   ],
 
   "repository": {
     "type": "git",
-    "url": "https://github.com/EMPEROR82/ChironIITK-CS335"
+    "url": "https://github.com/EMPEROR82/ChironPro"
   },
 
   "contributes": {
