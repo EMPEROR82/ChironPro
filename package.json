@@ -21,13 +21,13 @@
   },
   "contributes": {
     "commands": [
-      {
-        "command": "chiron.runFile",
-        "title": "Run Chiron File",
-        "icon": "./icons/titlebar.png",
-        "category": "Chiron"
-      }
-    ],
+    {
+      "command": "chiron.runFile",
+      "title": "Run Chiron File",
+      "icon": "$(play-circle)",
+      "category": "Chiron"
+    }
+  ],
     "menus": {
       "editor/title": [
         {
