@@ -24,7 +24,7 @@
       {
         "command": "chiron.runFile",
         "title": "Run Chiron File",
-        "icon": "$(play)",
+        "icon": "./icons/titlebar.png",
         "category": "Chiron"
       }
     ],
