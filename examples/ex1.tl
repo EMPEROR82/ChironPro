@@ -2,10 +2,9 @@ function square(:x) [
   return :x * :x
 ]
 
-:x = 10
-repeat 4 [
-  forward :x
-  left 90
-  :x = square(:x)
-]
+:y = 10
+square(:y)
+printf(:y)
+
+:y = square(:y)
 

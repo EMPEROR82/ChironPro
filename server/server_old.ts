@@ -700,8 +700,45 @@ function validateSemantics(doc: TextDocument): Diagnostic[] {
     }
   }
 
-  // Variables and arrays can be reassigned freely — no duplicate checking needed for them.
-  // Duplicate function definitions are already handled by the functionGroups block above.
+  // ─────────────────────────────────────────────
+  // ✅ Duplicate variables (same symmetric rule)
+  // ─────────────────────────────────────────────
+
+  const checkDuplicates = (symbols: SymbolInfo[]) => {
+    const groups = new Map<string, SymbolInfo[]>();
+
+    for (const sym of symbols) {
+      // Functions are already checked by the functionGroups block above;
+      // including them here would produce a second "Duplicate definition" squiggle.
+      if (sym.kind === 'function') continue;
+
+      if (!groups.has(sym.name)) {
+        groups.set(sym.name, []);
+      }
+      groups.get(sym.name)!.push(sym);
+    }
+
+    for (const [name, syms] of groups.entries()) {
+      if (syms.length > 1) {
+        for (const sym of syms) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: {
+              start: { line: sym.definedAt, character: 0 },
+              end: { line: sym.definedAt, character: name.length },
+            },
+            message: `Duplicate definition of '${name}'`,
+            source: 'chiron',
+          });
+        }
+      }
+    }
+  };
+
+  checkDuplicates(collector.globalScope.symbols);
+  for (const fs of collector.functionScopes) {
+    checkDuplicates(fs.scope.symbols);
+  }
 
   // ─────────────────────────────────────────────
   // ✅ Line-by-line checks (ignore comments)
