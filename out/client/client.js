@@ -68,7 +68,8 @@ function getColorConfig() {
     return {
         turtle: config.get('turtleColor') || 'yellow',
         pen: config.get('penColor') || 'red',
-        bg: config.get('backgroundColor') || 'black'
+        bg: config.get('backgroundColor') || 'black',
+        moveSpeed: config.get('moveSpeed') ?? 4
     };
 }
 function checkUvInstalled() {
@@ -167,7 +168,8 @@ function runChironHeadless(context, filePath, params) {
             data: {
                 bg: colors.bg,
                 pen_color: colors.pen,
-                turtle_color: colors.turtle
+                turtle_color: colors.turtle,
+                move_speed: colors.moveSpeed // ← add this
             }
         });
     };
