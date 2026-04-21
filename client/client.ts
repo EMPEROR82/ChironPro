@@ -28,7 +28,6 @@ function getChironRoot(context: vscode.ExtensionContext): string {
     return configured;
   }
 
-  // Updated to look inside the ChironRuntime folder
   return path.join(context.extensionPath, 'ChironRuntime', 'ChironCore');
 }
 
@@ -37,6 +36,22 @@ function checkUvInstalled(): Promise<boolean> {
     const proc = spawn('uv', ['--version']);
     proc.on('error', () => resolve(false));
     proc.on('close', () => resolve(true));
+  });
+}
+
+// ✅ NEW: installer
+async function installUv(): Promise<boolean> {
+  return new Promise((resolve) => {
+    vscode.window.showInformationMessage('uv not found. Installing latest version...');
+
+    const installCmd = process.platform === 'win32'
+      ? 'pip install uv'
+      : 'curl -Ls https://astral.sh/uv/install.sh | sh';
+
+    const proc = spawn(installCmd, { shell: true });
+
+    proc.on('error', () => resolve(false));
+    proc.on('close', (code) => resolve(code === 0));
   });
 }
 
@@ -73,7 +88,7 @@ async function runWithVariables(context: vscode.ExtensionContext, filePath: stri
   runChironFile(context, filePath, input);
 }
 
-// ── Headless (webview) runner ──────────────────────────────────────────────
+// ── Headless runner ───────────────────────────────────────────────────────
 
 type WebviewMessage =
   | { cmd: 'init'; data: { bg: string; pen_color: string; turtle_color: string } }
@@ -153,8 +168,17 @@ function runChironHeadless(
     proc?.kill();
   });
 
-  setTimeout(() => {
+  setTimeout(async () => {
     if (disposed) return;
+
+    let uvOk = await checkUvInstalled();
+    if (!uvOk) {
+      const installed = await installUv();
+      if (!installed) {
+        vscode.window.showErrorMessage('Failed to install uv automatically.');
+        return;
+      }
+    }
 
     proc = spawn('uv', ['run', ...spawnArgs], { cwd: chironRoot });
 
@@ -269,10 +293,23 @@ async function handleRunFile(context: vscode.ExtensionContext): Promise<void> {
   await editor.document.save();
   const filePath = editor.document.fileName;
 
-  const uvOk = await checkUvInstalled();
+  let uvOk = await checkUvInstalled();
+
   if (!uvOk) {
-    vscode.window.showErrorMessage('uv is not installed. Please install it first.');
-    return;
+    const installed = await installUv();
+
+    if (!installed) {
+      vscode.window.showErrorMessage('Failed to install uv automatically.');
+      return;
+    }
+
+    uvOk = await checkUvInstalled();
+    if (!uvOk) {
+      vscode.window.showErrorMessage('uv installation did not succeed.');
+      return;
+    }
+
+    vscode.window.showInformationMessage('uv installed successfully.');
   }
 
   const choice = await vscode.window.showQuickPick(
@@ -333,7 +370,6 @@ export function activate(context: vscode.ExtensionContext) {
     path.join('out/server/server.js')
   );
 
-  // Define how the server is executed in both normal and debug modes
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
     debug: {
