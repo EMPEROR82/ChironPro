@@ -50,9 +50,13 @@
   function ty(y) { return CY - y; }
 
   let turtlePos = { x: 0, y: 0, angle: 90 };
-  let penColor = 'blue';
-  let turtleColor = 'green';
-  let bgColor = 'white';
+
+  // No hardcoded color defaults here.
+  // These are always set by the 'init' message sent from client.ts,
+  // which reads them from VS Code settings (package.json defaults).
+  let penColor    = null;
+  let turtleColor = null;
+  let bgColor     = null;
 
   const drawnLines = [];
   const commandQueue = [];
@@ -135,6 +139,11 @@
     const dy = data.y2 - data.y1;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
+    // All three colors are stamped onto every line message by client.ts from VS Code settings
+    const lineColor   = data.color;
+    turtleColor       = data.turtle_color;
+    bgColor           = data.bg;
+
     let progress = 0;
 
     function step() {
@@ -153,7 +162,7 @@
         y1: data.y1,
         x2: cx,
         y2: cy,
-        color: data.color || penColor
+        color: lineColor
       });
 
       if (t < 1) {
@@ -164,7 +173,7 @@
           y1: data.y1,
           x2: data.x2,
           y2: data.y2,
-          color: data.color || penColor
+          color: lineColor
         });
 
         turtlePos.x = data.x2;
@@ -187,10 +196,12 @@
     const { cmd, data } = message;
 
     if (cmd === 'init') {
-      bgColor = data.bg;
-      canvas.style.background = bgColor;
-      penColor = data.pen_color;
+      // Authoritative: always trust these values — they come from VS Code settings
+      bgColor     = data.bg;
+      penColor    = data.pen_color;
       turtleColor = data.turtle_color;
+
+      canvas.style.background = bgColor;
       turtlePos = { x: 0, y: 0, angle: 90 };
       drawnLines.length = 0;
       redrawCanvas();

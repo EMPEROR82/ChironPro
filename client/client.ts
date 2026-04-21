@@ -31,6 +31,17 @@ function getChironRoot(context: vscode.ExtensionContext): string {
   return path.join(context.extensionPath, 'ChironRuntime', 'ChironCore');
 }
 
+// Single source of truth: always reads from VS Code settings (package.json defaults)
+function getColorConfig() {
+  const config = vscode.workspace.getConfiguration('chiron');
+
+  return {
+    turtle: config.get<string>('turtleColor') || 'yellow',
+    pen:    config.get<string>('penColor')    || 'red',
+    bg:     config.get<string>('backgroundColor') || 'black'
+  };
+}
+
 function checkUvInstalled(): Promise<boolean> {
   return new Promise((resolve) => {
     const proc = spawn('uv', ['--version']);
@@ -39,7 +50,6 @@ function checkUvInstalled(): Promise<boolean> {
   });
 }
 
-// ✅ NEW: installer
 async function installUv(): Promise<boolean> {
   return new Promise((resolve) => {
     vscode.window.showInformationMessage('uv not found. Installing latest version...');
@@ -92,38 +102,34 @@ async function runWithVariables(context: vscode.ExtensionContext, filePath: stri
 
 type WebviewMessage =
   | { cmd: 'init'; data: { bg: string; pen_color: string; turtle_color: string } }
-  | { cmd: 'line'; data: { x1: number; y1: number; x2: number; y2: number; color?: string } }
+  | { cmd: 'line'; data: { x1: number; y1: number; x2: number; y2: number; color: string; turtle_color: string; bg: string } }
   | { cmd: 'turtle_pos'; data: { x: number; y: number; angle: number } }
   | { cmd: 'rotate'; data: { angle: number } }
   | { cmd: 'pen'; data: { down: boolean } }
   | { cmd: 'print'; data: { text: string } };
 
+// normalizeMessage only reshapes the structure — it never sets colors.
+// Colors are always injected by the caller via getColorConfig().
 function normalizeMessage(raw: any): WebviewMessage | null {
   if (!raw || typeof raw !== 'object') return null;
   if (raw.cmd && raw.data) return raw as WebviewMessage;
 
   if (raw.type === 'forward') {
+    // No color fallback here — caller will attach pen color from settings
     return {
       cmd: 'line',
-      data: { x1: raw.x1, y1: raw.y1, x2: raw.x2, y2: raw.y2, color: raw.color || 'blue' }
+      data: { x1: raw.x1, y1: raw.y1, x2: raw.x2, y2: raw.y2, color: '', turtle_color: '', bg: '' }
     };
   }
 
-  if (raw.type === 'rotate') return { cmd: 'rotate', data: { angle: raw.angle } };
-  if (raw.type === 'pen') return { cmd: 'pen', data: { down: !!raw.down } };
+  if (raw.type === 'rotate')    return { cmd: 'rotate',     data: { angle: raw.angle } };
+  if (raw.type === 'pen')       return { cmd: 'pen',        data: { down: !!raw.down } };
   if (raw.type === 'turtle_pos') return { cmd: 'turtle_pos', data: raw };
-  if (raw.type === 'print') return { cmd: 'print', data: raw };
+  if (raw.type === 'print')     return { cmd: 'print',      data: raw };
 
-  if (raw.type === 'init') {
-    return {
-      cmd: 'init',
-      data: {
-        bg: raw.bg ?? 'white',
-        pen_color: raw.pen_color ?? 'blue',
-        turtle_color: raw.turtle_color ?? 'green'
-      }
-    };
-  }
+  // 'init' from the Python process is intentionally ignored here;
+  // we always send our own init built from VS Code settings.
+  if (raw.type === 'init') return null;
 
   return null;
 }
@@ -154,6 +160,22 @@ function runChironHeadless(
   }
 
   panel.webview.html = fs.readFileSync(htmlPath, 'utf8');
+
+  // Send a single authoritative init from VS Code settings once the webview is ready.
+  // This is the ONLY place colors are set for the webview session.
+  const sendInit = () => {
+    const colors = getColorConfig();
+    panel.webview.postMessage({
+      cmd: 'init',
+      data: {
+        bg:           colors.bg,
+        pen_color:    colors.pen,
+        turtle_color: colors.turtle
+      }
+    });
+  };
+
+  setTimeout(sendInit, 50);
 
   const spawnArgs = ['chiron.py', '--headless', '-r', filePath];
   if (params?.trim()) spawnArgs.push('-d', params.trim());
@@ -221,24 +243,30 @@ function runChironHeadless(
           const raw = JSON.parse(jsonStr);
           const msg = normalizeMessage(raw);
 
+          // null = unknown or intentionally dropped (e.g. Python-side 'init')
           if (!msg) {
-            output.appendLine(`[Unknown JSON] ${jsonStr}`);
+            if (raw.type !== 'init') {
+              output.appendLine(`[Unknown JSON] ${jsonStr}`);
+            }
             continue;
           }
 
-          if (msg.cmd === 'init') {
+          // Ensure init is sent before the first drawing command
+          if (!initSent) {
+            sendInit();
             initSent = true;
-            panel.webview.postMessage(msg);
-          } else {
-            if (!initSent) {
-              panel.webview.postMessage({
-                cmd: 'init',
-                data: { bg: 'white', pen_color: 'blue', turtle_color: 'green' }
-              });
-              initSent = true;
-            }
-            panel.webview.postMessage(msg);
           }
+
+          // Attach all three settings colors to every line message
+          if (msg.cmd === 'line') {
+            const colors = getColorConfig();
+            msg.data.color        = colors.pen;
+            msg.data.turtle_color = colors.turtle;
+            msg.data.bg           = colors.bg;
+          }
+
+          panel.webview.postMessage(msg);
+
         } catch {
           output.appendLine(`[Parse Error] ${jsonStr}`);
         }
