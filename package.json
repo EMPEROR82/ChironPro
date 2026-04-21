@@ -83,6 +83,13 @@
           "default": "green",
           "format": "color-hex",
           "description": "Background color of the canvas"
+        },
+        "chiron.moveSpeed": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Animation speed of the turtle in the Webview panel (pixels per frame)."
         }
       }
     },

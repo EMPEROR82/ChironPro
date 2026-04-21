@@ -62,7 +62,7 @@
   const commandQueue = [];
   let isAnimating = false;
 
-  const MOVE_SPEED = 4; // pixels per frame
+  let MOVE_SPEED = 4; // pixels per frame
 
   // ─────────────────────────────────────────
   // Turtle
@@ -201,6 +201,10 @@
       penColor    = data.pen_color;
       turtleColor = data.turtle_color;
 
+      MOVE_SPEED  = (typeof data.move_speed === 'number' && data.move_speed > 0)
+                  ? data.move_speed
+                  : 4;
+                  
       canvas.style.background = bgColor;
       turtlePos = { x: 0, y: 0, angle: 90 };
       drawnLines.length = 0;

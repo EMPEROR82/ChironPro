@@ -38,7 +38,8 @@ function getColorConfig() {
   return {
     turtle: config.get<string>('turtleColor') || 'yellow',
     pen:    config.get<string>('penColor')    || 'red',
-    bg:     config.get<string>('backgroundColor') || 'black'
+    bg:     config.get<string>('backgroundColor') || 'black',
+    moveSpeed: config.get<number>('moveSpeed')        ?? 4
   };
 }
 
@@ -101,7 +102,7 @@ async function runWithVariables(context: vscode.ExtensionContext, filePath: stri
 // ── Headless runner ───────────────────────────────────────────────────────
 
 type WebviewMessage =
-  | { cmd: 'init'; data: { bg: string; pen_color: string; turtle_color: string } }
+  | { cmd: 'init'; data: { bg: string; pen_color: string; turtle_color: string ; move_speed : number} }
   | { cmd: 'line'; data: { x1: number; y1: number; x2: number; y2: number; color: string; turtle_color: string; bg: string } }
   | { cmd: 'turtle_pos'; data: { x: number; y: number; angle: number } }
   | { cmd: 'rotate'; data: { angle: number } }
@@ -170,7 +171,8 @@ function runChironHeadless(
       data: {
         bg:           colors.bg,
         pen_color:    colors.pen,
-        turtle_color: colors.turtle
+        turtle_color: colors.turtle,
+        move_speed:   colors.moveSpeed   // ← add this
       }
     });
   };
