@@ -68,19 +68,19 @@
         },
         "chiron.turtleColor": {
           "type": "string",
-          "default": "purple",
+          "default": "green",
           "format": "color-hex",
           "description": "Color of the turtle"
         },
         "chiron.penColor": {
           "type": "string",
-          "default": "red",
+          "default": "blue",
           "format": "color-hex",
           "description": "Color of the drawing lines"
         },
         "chiron.backgroundColor": {
           "type": "string",
-          "default": "green",
+          "default": "white",
           "format": "color-hex",
           "description": "Background color of the canvas"
         },
