@@ -162,8 +162,6 @@ function runChironHeadless(
 
   panel.webview.html = fs.readFileSync(htmlPath, 'utf8');
 
-  // Send a single authoritative init from VS Code settings once the webview is ready.
-  // This is the ONLY place colors are set for the webview session.
   const sendInit = () => {
     const colors = getColorConfig();
     panel.webview.postMessage({
