@@ -25,4 +25,4 @@ function flower(:petals, :length) [
 ]
 
 printf("Sadly this works only with 6 as of now :(")
-:temp = flower(6, 50)
+:temp = flower(6, 
